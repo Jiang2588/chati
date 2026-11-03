@@ -59,6 +59,16 @@
    "createdAt": "2026-11-03",
    "count": 15,
    "file": "banks/physics-tutorial.json"
+  },
+  {
+   "id": "user-mw0f9kvp",
+   "title": "测试发布",
+   "subject": "高等数学",
+   "source": "粘贴文字",
+   "description": "从 粘贴文字 导入，共 2 题。",
+   "createdAt": "2026-11-03",
+   "count": 2,
+   "file": "banks/user-mw0f9kvp.json"
   }
  ]
 }
