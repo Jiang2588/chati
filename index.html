@@ -1256,7 +1256,6 @@ body.focus .shell{padding-top:0}
       try{
         setProgress(60,"正在写入仓库");
         await publishBank(bank);
-        toast("已提交到公共题库，Actions 会更新清单");
         state.manifest=[];loadPublic();
       }catch(e){toast("发布失败："+(e.message||"检查 token 权限"));return}
     }
@@ -1265,7 +1264,7 @@ body.focus .shell{padding-top:0}
     state.import.parsed=[];state.import.selected.clear();
     state.tab="private";
     setNav("library");
-    toast(publish?"已保存并发布":"已保存到私人题库");
+    toast(publish?"已保存并发布到公共题库":"已保存到私人题库");
   }
 
   // ---------------------------------------------------------------- publish / settings
@@ -1313,7 +1312,7 @@ body.focus .shell{padding-top:0}
       method:"PUT",headers:ghHeaders(settings.token),
       body:JSON.stringify({message:`update manifest: ${bank.title}`,content:utf8b64(JSON.stringify(manifest,null,1)),sha:msha})
     });
-    if(!mput.ok) throw new Error("题库已推送，但清单更新失败，刷新一次或等 Action 跑完");
+    if(!mput.ok) throw new Error("题库已推送，但清单更新失败，检查 token 权限后重试");
   }
 
   async function submitPublic(){
@@ -1345,7 +1344,7 @@ body.focus .shell{padding-top:0}
       </div>
       <div class="settings-block">
         <h3>公共题库怎么提交</h3>
-        <p>任何人打开仓库的 Issue 表单，粘进题库 JSON，仓库的 Action 会校验、入库、更新清单。不用服务器，也不用每个人都配 token。</p>
+        <p>有仓库写权限的人，在上面填 token 就能直接发布，题库和清单会一起更新。没有写权限的人，把 JSON 贴进 Issue 表单，由维护者合并。</p>
         <div class="toolbar">
           <a class="btn ghost" href="https://github.com/${esc(settings.repo)}/issues/new?template=bank.yml" target="_blank" rel="noopener">打开提交表单</a>
           <button class="btn ghost" id="copyExport">导出一份私人题库</button>

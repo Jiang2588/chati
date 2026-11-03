@@ -12,7 +12,8 @@
 - 题库分公共和私人：公共题库放在仓库里，任何人都能用；私人题库只在当前浏览器
 - 练习时显示来源章节、页码，可收藏、记错题，进度自动保存
 - 键盘 `←` `→` 翻题，空格显示答案；手机上可以左右滑
-- 公共题库通过 GitHub Issue 表单提交，仓库 Action 自动校验、入库、更新清单
+- 题库 JSON 可以直接发布：填一个有仓库写权限的 GitHub token，应用会把题库和清单一起写进 `banks/`
+- 没有写权限的人用 Issue 表单提交，维护者审核后合并
 
 ## 已经放进来的公共题库
 
@@ -36,17 +37,17 @@ python -m http.server 8087
 
 ## 想加一份公共题库
 
-1. 在页面里导入文件、切题、保存为私人题库。
-2. 打开仓库的 Issue 表单，把导出的 JSON 粘进去。
-3. Action 会自动写进 `banks/` 并更新 `banks/manifest.json`。
+最直接的办法是在页面里导入文件、切题、保存，然后在设置里填一个有仓库 Contents 写权限的 token，点「发布到公共题库」。应用会把 JSON 写进 `banks/`，顺手更新 `banks/manifest.json`，刷新就能看到。
 
-单份 JSON 建议不超过 6 万字符，太大就拆成几份。Issue 表单走 GitHub 的账号体系，不用服务器，也不用每个人配 token。
-
-管理员也可以直接在 `banks/` 放 JSON，再跑：
+没有仓库写权限的人，打开仓库的 Issue 表单，把导出的 JSON 粘进去。维护者看一眼，存成 `banks/xxx.json`，再跑：
 
 ```bash
 python tools/build_manifest.py
 ```
+
+单份 JSON 建议不超过 6 万字符，太大就拆成几份。
+
+管理员也可以直接在 `banks/` 放 JSON，再跑上面的清单脚本。
 
 ## 目录
 
@@ -57,8 +58,7 @@ vendor/pdf.worker.min.js
 vendor/jszip.min.js        Word 解包
 banks/*.json               公共题库
 tools/build_manifest.py     重建清单
-tools/merge_issue.py        处理 Issue 提交
-.github/workflows/         自动合并、重建清单
+.github/ISSUE_TEMPLATE/     公共题库提交表单
 ```
 
 ## 限制
