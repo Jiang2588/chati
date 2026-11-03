@@ -139,7 +139,7 @@ body.focus .shell{padding-top:0}
 .tag{border:1px solid var(--line-2);padding:2px 7px;font-size:10px;letter-spacing:.06em}
 .stem{
   font-family:var(--serif);font-size:clamp(21px,2.9vw,30px);line-height:1.72;
-  letter-spacing:.01em;margin:18px 0 0;white-space:pre-wrap;word-break:break-word;
+  letter-spacing:.01em;margin:18px 0 0;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
 }
 .stem.small{font-size:clamp(18px,2.2vw,23px);line-height:1.9}
 .options{display:grid;gap:10px;margin-top:26px}
@@ -155,6 +155,12 @@ body.focus .shell{padding-top:0}
 .option.correct{border-color:var(--green);background:#eef3ee}
 .option.correct .key{color:var(--green)}
 .option.wrong{border-color:var(--accent);background:#f8eae5}
+.frac{
+  display:inline-flex;flex-direction:column;align-items:center;vertical-align:-0.42em;
+  line-height:1;margin:0 .16em;font-size:.76em;white-space:nowrap;
+}
+.frac .num{padding:0 .32em}
+.frac .den{border-top:1px solid currentColor;padding:0 .32em;margin-top:.08em}
 .answer-input{margin-top:26px}
 .answer-input textarea{
   width:100%;min-height:88px;border:1px solid var(--line-2);background:var(--white);
@@ -179,11 +185,11 @@ body.focus .shell{padding-top:0}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .answer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
 .answer-head h4{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:500}
-.answer-val{font-family:var(--serif);font-size:19px;line-height:1.85;white-space:pre-wrap;word-break:break-word}
+.answer-val{font-family:var(--serif);font-size:19px;line-height:1.85;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
 .answer-val.empty{color:var(--muted);font-size:14px;font-family:var(--sans)}
 .expl{
   margin-top:18px;padding-left:16px;border-left:2px solid var(--accent);
-  font-size:14px;line-height:2;color:var(--ink-2);white-space:pre-wrap;word-break:break-word;
+  font-size:14px;line-height:2;color:var(--ink-2);white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
 }
 .expl .h{display:block;font-size:10px;letter-spacing:.16em;color:var(--accent);margin-bottom:6px;text-transform:uppercase}
 .qactions{
@@ -437,6 +443,28 @@ body.focus .shell{padding-top:0}
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const MATH_ATOM=[
+    "√\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)",
+    "√[A-Za-z0-9π∞]+(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
+    "(?:sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos)(?:\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)|[ \\t]+[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?)",
+    "\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)",
+    "[0-9]+(?:\\.[0-9]+)?[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
+    "[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
+    "[0-9]+(?:\\.[0-9]+)?(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?"
+  ].join("|");
+  const FRAC_RE=new RegExp("(?<![A-Za-z0-9])("+MATH_ATOM+")[ \\t]*\\/[ \\t]*("+MATH_ATOM+")(?![A-Za-z0-9])","g");
+  function mathHTML(src,on){
+    const s=String(src==null?"":src);
+    if(!on) return esc(s);
+    let out="",last=0;
+    s.replace(FRAC_RE,(m,num,den,off)=>{
+      out+=esc(s.slice(last,off));
+      out+=`<span class="frac"><span class="num">${esc(num)}</span><span class="den">${esc(den)}</span></span>`;
+      last=off+m.length;
+      return m;
+    });
+    return out+esc(s.slice(last));
+  }
   const fmt=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,",");
   const uid=()=>"u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+"-";
 
@@ -693,6 +721,7 @@ body.focus .shell{padding-top:0}
     if(s.finished){renderFinish();return}
     const q=s.qs[s.idx];
     const bank=s.bank;
+    const useFrac=/数学|微积分|calculus/i.test((bank.subject||"")+" "+(bank.title||""));
     const p=prog(bank.id);
     const isMarked=p.marked.includes(q.id);
     const isWrong=p.wrong.includes(q.id);
@@ -710,7 +739,7 @@ body.focus .shell{padding-top:0}
         else if(picked===o.key) cls="wrong";
       }else if(picked===o.key) cls="picked";
       return `<button class="option ${cls}" data-opt="${esc(o.key)}" ${revealed?"disabled":""}>
-        <span class="key">${esc(o.key)}</span><span class="txt">${esc(o.text)}</span>
+        <span class="key">${esc(o.key)}</span><span class="txt">${mathHTML(o.text,useFrac)}</span>
       </button>`;
     }).join("");
     const inputBox=(opts||q.type==="short")?"":`<div class="answer-input">
@@ -731,8 +760,8 @@ body.focus .shell{padding-top:0}
           <h4>Answer</h4>
           ${result?"":`<button class="link" data-act="hide-answer">收起</button>`}
         </div>
-        ${answer?`<div class="answer-val">${esc(answer)}</div>`:`<div class="answer-val empty">这道题原书没有给答案。可以翻回教材对应章节，或者自己补一句写在错题本里。</div>`}
-        ${q.explanation?`<div class="expl"><span class="h">解析</span>${esc(q.explanation)}</div>`:""}
+        ${answer?`<div class="answer-val">${mathHTML(answer,useFrac)}</div>`:`<div class="answer-val empty">这道题原书没有给答案。可以翻回教材对应章节，或者自己补一句写在错题本里。</div>`}
+        ${q.explanation?`<div class="expl"><span class="h">解析</span>${mathHTML(q.explanation,useFrac)}</div>`:""}
       </div>`:"";
     const typeLabel={choice:"选择题",fill:"填空题",judge:"判断题",short:"解答题"}[q.type]||"题目";
     const sourceLine=[q.chapter,q.section].filter(Boolean)
@@ -756,7 +785,7 @@ body.focus .shell{padding-top:0}
           ${q.page?`<span>第 ${q.page} 页</span>`:""}
           ${isWrong?`<span class="tag" style="color:var(--accent);border-color:var(--accent)">错过</span>`:""}
         </div>
-        <div class="stem ${q.stem&&q.stem.length>180?"small":""}">${esc(q.stem)}</div>
+        <div class="stem ${q.stem&&q.stem.length>180?"small":""}">${mathHTML(q.stem,useFrac)}</div>
         ${opts?`<div class="options">${opts}</div>`:""}
         ${inputBox}
         ${judge}
