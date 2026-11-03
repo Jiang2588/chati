@@ -59,6 +59,16 @@
    "createdAt": "2026-11-03",
    "count": 15,
    "file": "banks/physics-tutorial.json"
+  },
+  {
+   "id": "thomas-workbook-ch2-5",
+   "title": "Thomas 微积分练习册 · 第 2–5 章",
+   "subject": "高等数学 MA117",
+   "source": "MA117_第2-5章习题解答（一题一答案）.docx",
+   "description": "Workbook for Thomas' Calculus 第 2–5 章，共 98 题，题目与答案解析分开，逐题配对。",
+   "createdAt": "2026-11-03",
+   "count": 98,
+   "file": "banks/thomas-workbook-ch2-5.json"
   }
  ]
 }

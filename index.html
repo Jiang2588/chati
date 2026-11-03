@@ -155,6 +155,26 @@ body.focus .shell{padding-top:0}
 .option.correct{border-color:var(--green);background:#eef3ee}
 .option.correct .key{color:var(--green)}
 .option.wrong{border-color:var(--accent);background:#f8eae5}
+.answer-input{margin-top:26px}
+.answer-input textarea{
+  width:100%;min-height:88px;border:1px solid var(--line-2);background:var(--white);
+  padding:13px 15px;font-size:15px;line-height:1.8;resize:vertical;outline:none;
+  font-family:var(--serif);color:var(--ink);
+}
+.answer-input textarea:focus{border-color:var(--accent)}
+.answer-input textarea::placeholder{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.answer-input .row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:10px}
+.answer-input .row span{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.judge{
+  margin-top:26px;border:1px solid var(--line-2);padding:14px 16px;
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;font-size:13px;line-height:1.8;
+}
+.judge b{font-family:var(--serif);font-size:18px;font-weight:600}
+.judge.right{border-color:var(--green);background:#eef3ee}
+.judge.right b{color:var(--green)}
+.judge.wrong{border-color:var(--accent);background:#f8eae5}
+.judge.wrong b{color:var(--accent)}
+.judge .self{margin-left:auto}
 .answer{margin-top:30px;border-top:1.5px solid var(--ink);padding-top:18px;animation:rise .32s ease both}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .answer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
@@ -658,7 +678,8 @@ body.focus .shell{padding-top:0}
   // ---------------------------------------------------------------- quiz
   function startQuiz(bank,list){
     state.session={
-      bank, ids:list.map(q=>q.id), qs:list, idx:0, revealed:false, picked:null, finished:false,
+      bank, ids:list.map(q=>q.id), qs:list, idx:0, finished:false,
+      picks:{}, status:{}, inputs:{}, peeks:{}, right:0, wrongN:0,
       startedAt:Date.now()
     };
     state.view="quiz";
@@ -677,22 +698,38 @@ body.focus .shell{padding-top:0}
     const isWrong=p.wrong.includes(q.id);
     const answer=q.answer||"";
     const optionAnswer=/^[A-D]$/.test(answer.trim());
+    const picked=(s.picks&&s.picks[q.id])||null;
+    const result=(s.status&&s.status[q.id])||null;
+    const revealed=!!result||!!(s.peeks&&s.peeks[q.id]);
+    const typed=(s.inputs&&s.inputs[q.id])||"";
     const pct=Math.round((s.idx+1)/s.qs.length*100);
     const opts=(q.options||[]).map(o=>{
       let cls="";
-      if(s.revealed){
+      if(revealed){
         if(optionAnswer&&o.key===answer.trim()) cls="correct";
-        else if(s.picked===o.key) cls="wrong";
-      }else if(s.picked===o.key) cls="picked";
-      return `<button class="option ${cls}" data-opt="${esc(o.key)}" ${s.revealed?"disabled":""}>
+        else if(picked===o.key) cls="wrong";
+      }else if(picked===o.key) cls="picked";
+      return `<button class="option ${cls}" data-opt="${esc(o.key)}" ${revealed?"disabled":""}>
         <span class="key">${esc(o.key)}</span><span class="txt">${esc(o.text)}</span>
       </button>`;
     }).join("");
-    const showAnswer=s.revealed?`
+    const inputBox=(opts||q.type==="short")?"":`<div class="answer-input">
+        <textarea data-input placeholder="把最终结果写在这里，提交后自动判对错。" ${revealed?"disabled":""}>${esc(typed)}</textarea>
+        <div class="row">
+          <button class="btn accent small" data-act="check" ${revealed?"disabled":""}>提交答案</button>
+          <span>答案写法不同也算对：空格、全角符号、大小写不影响判定。</span>
+        </div>
+      </div>`;
+    const judge=result?`<div class="judge ${result==="right"?"right":"wrong"}">
+        <b>${result==="right"?"答对了":"答错了"}</b>
+        <span>${result==="right"?"和参考答案一致。":"和参考答案不一致。先对照下面的答案，确认是自己算错还是答案写法和题解不同。"}</span>
+        ${result==="wrong"?`<span class="self"><button class="link" data-act="self-right">其实我算对了</button></span>`:""}
+      </div>`:"";
+    const showAnswer=revealed?`
       <div class="answer">
         <div class="answer-head">
           <h4>Answer</h4>
-          <button class="link" data-act="hide-answer">收起</button>
+          ${result?"":`<button class="link" data-act="hide-answer">收起</button>`}
         </div>
         ${answer?`<div class="answer-val">${esc(answer)}</div>`:`<div class="answer-val empty">这道题原书没有给答案。可以翻回教材对应章节，或者自己补一句写在错题本里。</div>`}
         ${q.explanation?`<div class="expl"><span class="h">解析</span>${esc(q.explanation)}</div>`:""}
@@ -721,6 +758,8 @@ body.focus .shell{padding-top:0}
         </div>
         <div class="stem ${q.stem&&q.stem.length>180?"small":""}">${esc(q.stem)}</div>
         ${opts?`<div class="options">${opts}</div>`:""}
+        ${inputBox}
+        ${judge}
         ${showAnswer}
       </div>
       <div class="qactions">
@@ -730,7 +769,7 @@ body.focus .shell{padding-top:0}
         </div>
         <div class="side main">
           <button class="btn ghost small" data-act="prev" ${s.idx===0?"disabled":""}>上一题</button>
-          <button class="btn accent" data-act="reveal" ${s.revealed?"style=\"display:none\"":""}>显示答案</button>
+          <button class="btn accent" data-act="reveal" ${revealed?"style=\"display:none\"":""}>显示答案</button>
           <button class="btn" data-act="next">${s.idx===s.qs.length-1?"完成":"下一题"}</button>
         </div>
       </div>
@@ -742,20 +781,39 @@ body.focus .shell{padding-top:0}
     $$("[data-act='back-library']").forEach(b=>b.onclick=()=>{state.session=null;setNav("library")});
     $$("[data-opt]").forEach(b=>b.onclick=()=>{
       const s=state.session;
-      if(!s||s.revealed) return;
-      s.picked=b.dataset.opt;
-      $$("[data-opt]").forEach(x=>x.classList.toggle("picked",x.dataset.opt===s.picked));
-      if(!s.picked) return;
+      if(!s||isRevealed()) return;
       const q=s.qs[s.idx];
-      const p=prog(s.bank.id);
-      if(q.answer&&/^[A-D]$/.test(q.answer.trim())){
-        // selection alone doesn't reveal; record on reveal
+      s.picks[q.id]=b.dataset.opt;
+      const ans=(q.answer||"").trim();
+      if(/^[A-D]$/.test(ans)){recordJudge(s.picks[q.id]===ans);render();return}
+      $$("[data-opt]").forEach(x=>x.classList.toggle("picked",x.dataset.opt===s.picks[q.id]));
+    });
+    $$("[data-act='check']").forEach(b=>b.onclick=()=>{
+      const s=state.session;const q=s.qs[s.idx];
+      const el=$("[data-input]");
+      const val=el?el.value:"";
+      if(!val.trim()){toast("先写答案再提交");return}
+      s.inputs[q.id]=val;
+      recordJudge(sameAnswer(val,q.answer||""));
+      render();
+    });
+    $$("[data-act='self-right']").forEach(b=>b.onclick=()=>{
+      const s=state.session;const q=s.qs[s.idx];const p=prog(s.bank.id);
+      if(s.status[q.id]==="wrong"){
+        s.status[q.id]="right";
+        s.right++;s.wrongN=Math.max(0,s.wrongN-1);
+        p.wrong=p.wrong.filter(x=>x!==q.id);
+        saveProg();
       }
-      b.classList.add("picked");
+      render();
     });
     $$("[data-act='reveal']").forEach(b=>b.onclick=reveal);
     $$("[data-act='hide-answer']").forEach(b=>{
-      b.onclick=()=>{state.session.revealed=false;state.session.picked=null;render()};
+      b.onclick=()=>{
+        const s=state.session;const q=s.qs[s.idx];
+        if(!s.status[q.id]) delete s.peeks[q.id];
+        render();
+      };
     });
     $$("[data-act='prev']").forEach(b=>b.onclick=prev);
     $$("[data-act='next']").forEach(b=>b.onclick=next);
@@ -779,31 +837,74 @@ body.focus .shell{padding-top:0}
     },{passive:true});
   }
 
+  function isRevealed(){
+    const s=state.session;
+    if(!s) return false;
+    const q=s.qs[s.idx];
+    return !!(s.status[q.id]||s.peeks[q.id]);
+  }
+
+  function recordJudge(ok){
+    const s=state.session;
+    const q=s.qs[s.idx];
+    const p=prog(s.bank.id);
+    s.status[q.id]=ok?"right":"wrong";
+    if(ok) s.right++; else s.wrongN++;
+    if(!p.seen.includes(q.id)) p.seen.push(q.id);
+    if(!ok&&!p.wrong.includes(q.id)) p.wrong.push(q.id);
+    saveProg();
+  }
+
+  // 判分口径：忽略空格、大小写、全角/半角差别；纯数字或分数答案按数值比较
+  function normAns(t){
+    return String(t||"")
+      .toLowerCase()
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248))
+      .replace(/（/g,"(").replace(/）/g,")")
+      .replace(/／/g,"/").replace(/＝/g,"=").replace(/＋/g,"+").replace(/[－—]/g,"-")
+      .replace(/[×·]/g,"*")
+      .replace(/[，、]/g,",")
+      .replace(/[。；;]/g,"")
+      .replace(/[ \t\r\n]/g,"");
+  }
+
+  function toNum(v){
+    const t=normAns(v);
+    if(/^[+-]?\d+(?:\.\d+)?$/.test(t)) return parseFloat(t);
+    const m=t.match(/^[+-]?(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
+    if(m&&parseFloat(m[2])!==0) return parseFloat(m[1])/parseFloat(m[2]);
+    return null;
+  }
+
+  function sameAnswer(user,ans){
+    const a=normAns(user), b=normAns(ans);
+    if(!a) return false;
+    if(a===b) return true;
+    const na=toNum(a), nb=toNum(b);
+    if(na!==null&&nb!==null) return Math.abs(na-nb)<1e-9*Math.max(1,Math.abs(nb));
+    return false;
+  }
+
   function reveal(){
     const s=state.session;
-    if(!s||s.revealed) return;
-    s.revealed=true;
-    const q=s.qs[s.idx];const p=prog(s.bank.id);
+    if(!s||isRevealed()) return;
+    const q=s.qs[s.idx];
+    s.peeks[q.id]=1;
+    const p=prog(s.bank.id);
     if(!p.seen.includes(q.id)) p.seen.push(q.id);
-    if(q.answer&&/^[A-D]$/.test(q.answer.trim())&&s.picked&&s.picked!==q.answer.trim()){
-      if(!p.wrong.includes(q.id)) p.wrong.push(q.id);
-    }
     saveProg();render();
   }
   function next(){
     const s=state.session;
     if(!s) return;
-    if(!s.revealed){
-      // allow skipping without answer
-    }
     if(s.idx>=s.qs.length-1){s.finished=true;const p=prog(s.bank.id);p.last=0;saveProg();render();return}
-    s.idx++;s.revealed=false;s.picked=null;const p=prog(s.bank.id);p.last=s.idx;saveProg();render();
+    s.idx++;const p=prog(s.bank.id);p.last=s.idx;saveProg();render();
     window.scrollTo({top:0,behavior:"smooth"});
   }
   function prev(){
     const s=state.session;
     if(!s||s.idx===0) return;
-    s.idx--;s.revealed=false;s.picked=null;const p=prog(s.bank.id);p.last=s.idx;saveProg();render();
+    s.idx--;const p=prog(s.bank.id);p.last=s.idx;saveProg();render();
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
@@ -817,8 +918,8 @@ body.focus .shell{padding-top:0}
       <div class="big">这一轮结束了。</div>
       <div class="sub">${esc(s.bank.title)} · ${s.qs.length} 题</div>
       <div class="grid">
-        <div><b>${seen}</b><span>看过答案</span></div>
-        <div><b>${wrong}</b><span>进了错题本</span></div>
+        <div><b>${s.right}</b><span>答对</span></div>
+        <div><b>${s.wrongN}</b><span>答错</span></div>
         <div><b>${marked}</b><span>收藏</span></div>
       </div>
       <div class="toolbar" style="justify-content:center">
@@ -842,7 +943,7 @@ body.focus .shell{padding-top:0}
     if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
     if(e.key==="ArrowRight"){e.preventDefault();next()}
     else if(e.key==="ArrowLeft"){e.preventDefault();prev()}
-    else if(e.key===" "){e.preventDefault();state.session.revealed?next():reveal()}
+    else if(e.key===" "){e.preventDefault();isRevealed()?next():reveal()}
   });
 
   // ---------------------------------------------------------------- text helpers
