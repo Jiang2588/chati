@@ -1277,6 +1277,11 @@ body.focus .shell{padding-top:0}
     let bin="";bytes.forEach(b=>bin+=String.fromCharCode(b));
     return btoa(bin);
   }
+  function utf8FromB64(b64){
+    const bin=atob(String(b64||"").replace(/\s/g,""));
+    const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
   async function publishBank(bank){
     const [owner,repo]=settings.repo.split("/");
     if(!owner||!repo) throw new Error("仓库地址要写成 owner/repo");
@@ -1290,8 +1295,25 @@ body.focus .shell{padding-top:0}
     const put=await fetch(api,{method:"PUT",headers:ghHeaders(settings.token),body:JSON.stringify(body)});
     if(!put.ok){
       const t=await put.text();
-      throw new Error(put.status===401?"token 无效":put.status===404?"仓库或分支不存在":t.slice(0,80));
+      throw new Error(put.status===401?"token 无效":put.status===403?"token 没有这个仓库的写入权限":put.status===404?"仓库或分支不存在":t.slice(0,80));
     }
+    // 同步更新清单，题库才会出现在公共列表
+    const mpath="banks/manifest.json";
+    const mget=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${mpath}`,{headers:ghHeaders(settings.token)});
+    let manifest={banks:[]},msha=null;
+    if(mget.ok){
+      const j=await mget.json();msha=j.sha;
+      try{manifest=JSON.parse(utf8FromB64(j.content))}catch(e){manifest={banks:[]}}
+    }
+    if(!Array.isArray(manifest.banks)) manifest.banks=[];
+    const entry={id:bank.id,title:bank.title,subject:bank.subject||"",source:bank.source||"",description:bank.description||"",createdAt:new Date().toISOString().slice(0,10),count:bank.questions.length,file:path};
+    const i=manifest.banks.findIndex(b=>b.id===bank.id);
+    if(i>=0) manifest.banks[i]=entry; else manifest.banks.push(entry);
+    const mput=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${mpath}`,{
+      method:"PUT",headers:ghHeaders(settings.token),
+      body:JSON.stringify({message:`update manifest: ${bank.title}`,content:utf8b64(JSON.stringify(manifest,null,1)),sha:msha})
+    });
+    if(!mput.ok) throw new Error("题库已推送，但清单更新失败，刷新一次或等 Action 跑完");
   }
 
   async function submitPublic(){
