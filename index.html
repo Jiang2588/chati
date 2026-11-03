@@ -161,6 +161,11 @@ body.focus .shell{padding-top:0}
 }
 .frac .num{padding:0 .32em}
 .frac .den{border-top:1px solid currentColor;padding:0 .32em;margin-top:.08em}
+.frac .frac{font-size:.86em;margin:0 .1em}
+sup .frac,sub .frac{font-size:.95em;vertical-align:-.3em}
+.stem sup,.stem sub,.option .txt sup,.option .txt sub,.expl sup,.expl sub,.answer-val sup,.answer-val sub{
+  font-size:.72em;line-height:0;
+}
 .answer-input{margin-top:26px}
 .answer-input textarea{
   width:100%;min-height:88px;border:1px solid var(--line-2);background:var(--white);
@@ -443,27 +448,81 @@ body.focus .shell{padding-top:0}
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // 公式渲染：优先认 \frac{}{}、^{}、_{} 这种由导入器写好的结构标记；
+  // 老题库没有标记，退回按 a/b 猜分子分母。
+  // 题库里混着 𝑓、𝑥 这类数学斜体字符（U+1D400 区），先落回普通字母再匹配
+  function normMath(s){
+    return s.replace(/[\uD835][\uDC00-\uDFFF]/g,ch=>{
+      const cp=0x1D400+((ch.charCodeAt(0)-0xD835)<<10)+(ch.charCodeAt(1)-0xDC00);
+      if(cp>=0x1D7CE&&cp<=0x1D7FF) return String((cp-0x1D7CE)%10);
+      if(cp<=0x1D6A3){
+        const off=(cp-0x1D400)%52;
+        return String.fromCharCode(off<26?65+off:97+off-26);
+      }
+      return ch;
+    });
+  }
+  const LAT="[A-Za-z0-9π∞]";
   const MATH_ATOM=[
     "√\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)",
-    "√[A-Za-z0-9π∞]+(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
-    "(?:sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos)(?:\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)|[ \\t]+[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?)",
+    "√"+LAT+"+(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|"+LAT+"))?",
+    "(?:sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos)(?:\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)|[ \\t]+"+LAT+"{1,3}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|"+LAT+"))?)",
     "\\([^()\\s][^()\\n]{0,78}[^()\\s]?\\)",
-    "[0-9]+(?:\\.[0-9]+)?[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
-    "[A-Za-zπ∞][A-Za-z0-9π∞]{0,2}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?",
-    "[0-9]+(?:\\.[0-9]+)?(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|[A-Za-zπ∞]))?"
+    LAT+"{1,3}(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|"+LAT+"))?",
+    "[0-9]+(?:\\.[0-9]+)?(?:\\^(?:\\([^()\\n]*\\)|[-+]?[0-9]+(?:[+-][0-9]+)?|"+LAT+"))?"
   ].join("|");
-  const FRAC_RE=new RegExp("(?<![A-Za-z0-9])("+MATH_ATOM+")[ \\t]*\\/[ \\t]*("+MATH_ATOM+")(?![A-Za-z0-9])","g");
-  function mathHTML(src,on){
-    const s=String(src==null?"":src);
-    if(!on) return esc(s);
+  const FRAC_RE=new RegExp("(?<!["+LAT.slice(1,-1)+"])("+MATH_ATOM+")[ \\t]*\\/[ \\t]*("+MATH_ATOM+")(?!["+LAT.slice(1,-1)+"])","g");
+
+  function readGroup(s,i){
+    if(s[i]!=="{") return null;
+    let depth=0;
+    for(let j=i;j<s.length;j++){
+      if(s[j]==="{") depth++;
+      else if(s[j]==="}"){ depth--; if(depth===0) return {text:s.slice(i+1,j),end:j+1}; }
+    }
+    return null;
+  }
+  function plainMath(s,guess){
+    if(!guess) return esc(s);
     let out="",last=0;
     s.replace(FRAC_RE,(m,num,den,off)=>{
       out+=esc(s.slice(last,off));
-      out+=`<span class="frac"><span class="num">${esc(num)}</span><span class="den">${esc(den)}</span></span>`;
+      out+=fracHTML(num,den,0,true);
       last=off+m.length;
       return m;
     });
     return out+esc(s.slice(last));
+  }
+  function fracHTML(num,den,depth,guess){
+    return `<span class="frac"><span class="num">${mathCore(num,depth+1,guess)}</span><span class="den">${mathCore(den,depth+1,guess)}</span></span>`;
+  }
+  function mathCore(s,depth,guess){
+    if(depth>5) return esc(s);
+    let out="",buf="",i=0;
+    const push=()=>{ if(buf){ out+=plainMath(buf,guess); buf=""; } };
+    while(i<s.length){
+      if(s.startsWith("\\frac",i)){
+        const a=readGroup(s,i+5);
+        const b=a&&readGroup(s,a.end);
+        if(b){ push(); out+=fracHTML(a.text,b.text,depth,guess); i=b.end; continue; }
+      }
+      if((s[i]==="^"||s[i]==="_") && s[i+1]==="{"){
+        const g=readGroup(s,i+1);
+        if(g){
+          push();
+          const tag=s[i]==="^"?"sup":"sub";
+          out+=`<${tag}>${mathCore(g.text,depth+1,false)}</${tag}>`;
+          i=g.end; continue;
+        }
+      }
+      buf+=s[i]; i++;
+    }
+    push();
+    return out;
+  }
+  function mathHTML(src,on){
+    const s=String(src==null?"":src);
+    return mathCore(on?normMath(s):s,0,!!on);
   }
   const fmt=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,",");
   const uid=()=>"u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+"-";
