@@ -1,0 +1,37 @@
+name: 提交公共题库
+description: 把导出的题库 JSON 提交到公共题库，机器人会自动校验并入库。
+title: "[题库] "
+labels: ["题库提交"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先在「拆题」里切好题，点题库的导出，拿到 JSON 文件。把整段 JSON 粘到最后一栏。
+        单份建议控制在 6 万字符以内；更大的题库请拆成几份，或者让仓库管理员直接提交文件。
+  - type: input
+    id: bank_name
+    attributes:
+      label: 题库名称
+      placeholder: 例如：高等数学 · 第三章导数
+    validations:
+      required: true
+  - type: input
+    id: bank_subject
+    attributes:
+      label: 学科
+      placeholder: 高等数学 / 大学物理 / 其他
+    validations:
+      required: true
+  - type: input
+    id: bank_source
+    attributes:
+      label: 来源
+      placeholder: 教材名、课件名或课程
+  - type: textarea
+    id: bank_json
+    attributes:
+      label: 题库 JSON
+      description: 整段粘贴，必须包含 questions 数组。
+      render: json
+    validations:
+      required: true

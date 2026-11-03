@@ -1,0 +1,64 @@
+{
+ "banks": [
+  {
+   "id": "ma117-2023",
+   "title": "高等数学 · 2023 秋期中",
+   "subject": "高等数学 MA117",
+   "source": "MA117_2023秋期中_题目与解答.pdf",
+   "description": "2023 秋季学期期中试卷，逐题附答案与解答。",
+   "createdAt": "2026-11-03",
+   "count": 15,
+   "file": "banks/ma117-2023.json"
+  },
+  {
+   "id": "ma117-lecture",
+   "title": "高等数学 · 讲义例题全解",
+   "subject": "高等数学 MA117",
+   "source": "MA117_讲义例题全解_Ch02-Ch04_题目与解答.pdf",
+   "description": "Thomas' Calculus 配套讲义例题，Ch02–Ch04，共 157 题，题解完整。",
+   "createdAt": "2026-11-03",
+   "count": 157,
+   "file": "banks/ma117-lecture.json"
+  },
+  {
+   "id": "ma117-mock-a",
+   "title": "高等数学 · 期中模拟 A 卷",
+   "subject": "高等数学 MA117",
+   "source": "MA117_期中模拟试卷A卷_题目与答案.pdf",
+   "description": "MA117 期中模拟 A 卷，选择、填空、解答全部带答案解析。",
+   "createdAt": "2026-11-03",
+   "count": 16,
+   "file": "banks/ma117-mock-a.json"
+  },
+  {
+   "id": "ma117-mock-b",
+   "title": "高等数学 · 期中模拟 B 卷",
+   "subject": "高等数学 MA117",
+   "source": "MA117_期中模拟试卷B卷_题目与答案.pdf",
+   "description": "MA117 期中模拟 B 卷，选择、填空、解答全部带答案解析。",
+   "createdAt": "2026-11-03",
+   "count": 16,
+   "file": "banks/ma117-mock-b.json"
+  },
+  {
+   "id": "physics-textbook",
+   "title": "大学物理 · 教材习题（第 1–10 章）",
+   "subject": "大学物理（一）",
+   "source": "Principles of Physics IS Version 10th.pdf",
+   "description": "Principles of Physics 第十版第 1–10 章课后习题；奇数题附原书答案，偶数题暂无答案。",
+   "createdAt": "2026-11-03",
+   "count": 332,
+   "file": "banks/physics-textbook.json"
+  },
+  {
+   "id": "physics-tutorial",
+   "title": "大学物理 · Tutorial 例题",
+   "subject": "大学物理（一）",
+   "source": "大学物理(一)_Tutorial例题解答.pdf",
+   "description": "Principles of Physics 第十版配套 Tutorial 例题，题目与完整解答。",
+   "createdAt": "2026-11-03",
+   "count": 15,
+   "file": "banks/physics-tutorial.json"
+  }
+ ]
+}
